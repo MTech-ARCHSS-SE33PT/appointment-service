@@ -1,0 +1,14 @@
+namespace AppointmentService.Api.Events;
+
+public sealed class AppointmentCheckedInEvent
+{
+    public Guid EventId { get; init; } = Guid.NewGuid();
+    public string EventType { get; init; } = "appointment_checked_in";
+    public DateTimeOffset OccurredAt { get; init; } = DateTimeOffset.UtcNow;
+
+    public Guid AppointmentId { get; init; }
+    public Guid TenantId { get; init; }
+    public Guid ServiceId { get; init; }
+
+    public string CorrelationId { get; init; } = Guid.NewGuid().ToString("N");
+}
