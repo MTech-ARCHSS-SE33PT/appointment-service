@@ -5,3 +5,6 @@ obj/
 .vscode/
 *.user
 *.suo
+
+AppointmentService.Tests/TestResults/
+TestResults/
