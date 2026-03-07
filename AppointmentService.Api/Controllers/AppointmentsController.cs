@@ -1,5 +1,6 @@
 using AppointmentService.Api.Models;
 using AppointmentService.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AppointmentService.Api.Controllers;
@@ -9,6 +10,7 @@ namespace AppointmentService.Api.Controllers;
 public sealed class AppointmentsController : ControllerBase
 {
     [HttpPost]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AppointmentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Book(
