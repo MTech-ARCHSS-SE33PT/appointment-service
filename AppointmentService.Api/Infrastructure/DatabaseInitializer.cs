@@ -1,14 +1,20 @@
 using AppointmentService.Api.Services;
+using System.Data.Common;
 
 namespace AppointmentService.Api.Infrastructure;
 
 public sealed class DatabaseInitializer
 {
-    private readonly IDbConnectionFactory _connectionFactory;
+    private readonly Func<DbConnection> _createConnection;
 
     public DatabaseInitializer(IDbConnectionFactory connectionFactory)
     {
-        _connectionFactory = connectionFactory;
+        _createConnection = connectionFactory.CreateConnection;
+    }
+
+    public DatabaseInitializer(Func<DbConnection> createConnection)
+    {
+        _createConnection = createConnection;
     }
 
     public async Task InitializeAsync(CancellationToken ct)
@@ -37,7 +43,7 @@ public sealed class DatabaseInitializer
             END
             """;
 
-        await using var connection = _connectionFactory.CreateConnection();
+        await using var connection = _createConnection();
         await connection.OpenAsync(ct);
         await using var command = connection.CreateCommand();
         command.CommandText = sql;
