@@ -1,4 +1,5 @@
 using AppointmentService.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 
@@ -9,6 +10,7 @@ namespace AppointmentService.Api.Controllers;
 public sealed class HealthController : ControllerBase
 {
     [HttpGet("db")]
+    [AllowAnonymous]
     public async Task<IActionResult> Database([FromServices] IServiceProvider services, CancellationToken ct)
     {
         var connectionFactory = services.GetService<IDbConnectionFactory>();

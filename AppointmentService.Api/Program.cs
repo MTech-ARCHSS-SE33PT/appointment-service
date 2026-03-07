@@ -1,7 +1,32 @@
 using AppointmentService.Api.Infrastructure;
 using AppointmentService.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var issuer = builder.Configuration["Auth:LocalIssuer"] ?? throw new InvalidOperationException("Auth:LocalIssuer is required.");
+var audience = builder.Configuration["Auth:LocalAudience"] ?? throw new InvalidOperationException("Auth:LocalAudience is required.");
+var signingKey = builder.Configuration["Auth:LocalSigningKey"] ?? throw new InvalidOperationException("Auth:LocalSigningKey is required.");
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = issuer,
+            ValidateAudience = true,
+            ValidAudience = audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -11,9 +36,14 @@ var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnec
 if (!string.IsNullOrWhiteSpace(defaultConnection))
 {
     builder.Services.AddSingleton<IDbConnectionFactory>(_ => new SqlConnectionFactory(defaultConnection));
+    builder.Services.AddSingleton<DatabaseInitializer>();
+    builder.Services.AddSingleton<IAppointmentRepository, AdoNetAppointmentRepository>();
+}
+else
+{
+    builder.Services.AddSingleton<IAppointmentRepository, InMemoryAppointmentRepository>();
 }
 
-builder.Services.AddSingleton<IAppointmentRepository, InMemoryAppointmentRepository>();
 builder.Services.AddSingleton<IEventPublisher, ConsoleEventPublisher>();
 builder.Services.AddScoped<AppointmentManagementService>();
 builder.Services.AddScoped<CheckInAppointmentHandler>();
@@ -28,10 +58,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.MapControllers();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers().RequireAuthorization();
 
 using (var scope = app.Services.CreateScope())
 {
+    var dbInitializer = scope.ServiceProvider.GetService<DatabaseInitializer>();
+    if (dbInitializer is not null)
+    {
+        await dbInitializer.InitializeAsync(CancellationToken.None);
+    }
+
     var seeder = scope.ServiceProvider.GetRequiredService<SampleAppointmentSeeder>();
     await seeder.SeedAsync(CancellationToken.None);
 }
