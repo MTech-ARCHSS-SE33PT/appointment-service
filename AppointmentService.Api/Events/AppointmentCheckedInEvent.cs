@@ -9,6 +9,7 @@ public sealed class AppointmentCheckedInEvent
     public Guid AppointmentId { get; init; }
     public Guid TenantId { get; init; }
     public Guid ServiceId { get; init; }
+    public int PriorityLevel { get; init; }
 
     public string CorrelationId { get; init; } = Guid.NewGuid().ToString("N");
 }
