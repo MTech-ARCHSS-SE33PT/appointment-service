@@ -1,8 +1,11 @@
 using AppointmentService.Api.Infrastructure;
 using AppointmentService.Api.Services;
+using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+
+DotEnv.LoadFromWellKnownLocations();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,10 +47,34 @@ else
     builder.Services.AddSingleton<IAppointmentRepository, InMemoryAppointmentRepository>();
 }
 
-builder.Services.AddSingleton<IEventPublisher, ConsoleEventPublisher>();
+var asbConn = builder.Configuration["ASB_CONN"];
+var asbTopic = builder.Configuration["ASB_TOPIC"];
+if (!string.IsNullOrWhiteSpace(asbConn) && !string.IsNullOrWhiteSpace(asbTopic))
+{
+    builder.Services.AddSingleton(_ => new ServiceBusClient(asbConn));
+    builder.Services.AddSingleton<IEventPublisher>(sp =>
+        new ServiceBusEventPublisher(sp.GetRequiredService<ServiceBusClient>(), asbTopic));
+}
+else
+{
+    builder.Services.AddSingleton<IEventPublisher, ConsoleEventPublisher>();
+}
 builder.Services.AddScoped<AppointmentManagementService>();
 builder.Services.AddScoped<CheckInAppointmentHandler>();
 builder.Services.AddScoped<SampleAppointmentSeeder>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy
+                .WithOrigins("http://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+});
 
 var app = builder.Build();
 
@@ -58,6 +85,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 

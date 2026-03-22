@@ -10,8 +10,8 @@ RUN dotnet publish "AppointmentService.Api/AppointmentService.Api.csproj" -c Rel
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:5263
+EXPOSE 5263
 
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "AppointmentService.Api.dll"]

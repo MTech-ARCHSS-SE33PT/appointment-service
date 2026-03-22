@@ -30,7 +30,8 @@ public sealed class CheckInAppointmentHandler
         {
             AppointmentId = appointment.AppointmentId,
             TenantId = appointment.TenantId,
-            ServiceId = appointment.ServiceId
+            ServiceId = appointment.ServiceId,
+            PriorityLevel = appointment.PriorityLevel
         };
 
         await _publisher.PublishAsync(evt, ct);
