@@ -37,6 +37,33 @@ public sealed class AppointmentManagementServiceTests
     }
 
     [Fact]
+    public async Task BookAppointmentAsync_WhenSlotUnavailable_DoesNotPersistOrPublish()
+    {
+        var repository = new FakeAppointmentRepository();
+        var publisher = new FakeEventPublisher();
+        var service = new AppointmentManagementService(
+            repository,
+            publisher,
+            new RejectingAvailabilityValidator("Selected time is outside configured availability."));
+
+        var request = new BookAppointmentRequest
+        {
+            TenantId = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            ServiceId = Guid.NewGuid(),
+            SlotStart = DateTimeOffset.UtcNow.AddHours(1),
+            SlotEnd = DateTimeOffset.UtcNow.AddHours(1).AddMinutes(30)
+        };
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.BookAppointmentAsync(request, CancellationToken.None));
+
+        Assert.Contains("outside configured availability", ex.Message);
+        Assert.Empty(repository.Appointments);
+        Assert.Empty(publisher.Events);
+    }
+
+    [Fact]
     public async Task CreateWalkInAsync_UsesDefaultDuration_AndPublishesBookedEvent()
     {
         var repository = new FakeAppointmentRepository();
@@ -79,6 +106,26 @@ public sealed class AppointmentManagementServiceTests
         {
             Events.Add(@event!);
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RejectingAvailabilityValidator : IAvailabilityValidator
+    {
+        private readonly string _message;
+
+        public RejectingAvailabilityValidator(string message)
+        {
+            _message = message;
+        }
+
+        public Task ValidateScheduledSlotAsync(
+            Guid tenantId,
+            Guid serviceId,
+            DateTimeOffset slotStart,
+            DateTimeOffset slotEnd,
+            CancellationToken ct)
+        {
+            throw new ArgumentException(_message);
         }
     }
 

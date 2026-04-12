@@ -9,15 +9,32 @@ public sealed class AppointmentManagementService
 
     private readonly IAppointmentRepository _repository;
     private readonly IEventPublisher _publisher;
+    private readonly IAvailabilityValidator _availabilityValidator;
 
     public AppointmentManagementService(IAppointmentRepository repository, IEventPublisher publisher)
+        : this(repository, publisher, new AllowAllAvailabilityValidator())
+    {
+    }
+
+    public AppointmentManagementService(
+        IAppointmentRepository repository,
+        IEventPublisher publisher,
+        IAvailabilityValidator availabilityValidator)
     {
         _repository = repository;
         _publisher = publisher;
+        _availabilityValidator = availabilityValidator;
     }
 
     public async Task<Appointment> BookAppointmentAsync(BookAppointmentRequest request, CancellationToken ct)
     {
+        await _availabilityValidator.ValidateScheduledSlotAsync(
+            request.TenantId,
+            request.ServiceId,
+            request.SlotStart,
+            request.SlotEnd,
+            ct);
+
         var appointment = Appointment.CreateScheduled(
             userId: request.UserId,
             tenantId: request.TenantId,
@@ -46,6 +63,13 @@ public sealed class AppointmentManagementService
 
         var previousSlotStart = appointment.SlotStart;
         var previousSlotEnd = appointment.SlotEnd;
+
+        await _availabilityValidator.ValidateScheduledSlotAsync(
+            appointment.TenantId,
+            appointment.ServiceId,
+            request.NewSlotStart,
+            request.NewSlotEnd,
+            ct);
 
         appointment.Reschedule(request.NewSlotStart, request.NewSlotEnd);
         await _repository.UpdateAsync(appointment, ct);

@@ -1,4 +1,5 @@
 using AppointmentService.Api.Infrastructure;
+using AppointmentService.Api.Models;
 using AppointmentService.Api.Services;
 using Azure.Messaging.ServiceBus;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -34,6 +35,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.Configure<AvailabilityValidationOptions>(builder.Configuration.GetSection("AvailabilityValidation"));
 
 var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrWhiteSpace(defaultConnection))
@@ -41,10 +43,12 @@ if (!string.IsNullOrWhiteSpace(defaultConnection))
     builder.Services.AddSingleton<IDbConnectionFactory>(_ => new SqlConnectionFactory(defaultConnection));
     builder.Services.AddSingleton<DatabaseInitializer>();
     builder.Services.AddSingleton<IAppointmentRepository, AdoNetAppointmentRepository>();
+    builder.Services.AddScoped<IAvailabilityValidator, SqlAvailabilityValidator>();
 }
 else
 {
     builder.Services.AddSingleton<IAppointmentRepository, InMemoryAppointmentRepository>();
+    builder.Services.AddScoped<IAvailabilityValidator, AllowAllAvailabilityValidator>();
 }
 
 var asbConn = builder.Configuration["ASB_CONN"];
