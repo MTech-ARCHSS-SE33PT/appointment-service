@@ -8,12 +8,14 @@ public sealed class AppointmentModelMoreTests
     [Fact]
     public void CreateScheduled_WithInvalidRange_Throws()
     {
+        var slot = DateTimeOffset.UtcNow;
+
         Assert.Throws<ArgumentException>(() => Appointment.CreateScheduled(
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
-            DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow));
+            slot,
+            slot));
     }
 
     [Fact]
