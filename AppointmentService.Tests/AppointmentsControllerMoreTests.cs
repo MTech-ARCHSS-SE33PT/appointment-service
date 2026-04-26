@@ -13,11 +13,12 @@ public sealed class AppointmentsControllerMoreTests
     {
         var controller = new AppointmentsController();
         var service = CreateService(new FakeRepository(), new FakePublisher());
+        var invalidSlot = DateTimeOffset.UtcNow;
 
         var result = await controller.Reschedule(Guid.NewGuid(), new RescheduleAppointmentRequest
         {
-            NewSlotStart = DateTimeOffset.UtcNow,
-            NewSlotEnd = DateTimeOffset.UtcNow
+            NewSlotStart = invalidSlot,
+            NewSlotEnd = invalidSlot
         }, service, CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(result);

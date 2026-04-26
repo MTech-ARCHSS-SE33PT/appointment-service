@@ -1,5 +1,10 @@
+using AppointmentService.Api.Infrastructure;
+using AppointmentService.Api.Services;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
@@ -16,6 +21,7 @@ public sealed class AppointmentAuthIntegrationTests : IClassFixture<WebApplicati
         {
             builder.ConfigureAppConfiguration((_, config) =>
             {
+                config.Sources.Clear();
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:DefaultConnection"] = "",
@@ -23,6 +29,15 @@ public sealed class AppointmentAuthIntegrationTests : IClassFixture<WebApplicati
                     ["Auth:LocalAudience"] = "queuex-platform",
                     ["Auth:LocalSigningKey"] = "iX4UrgHAFL2ELwXtwFCWKhGghe98PPEC"
                 });
+            });
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IDbConnectionFactory>();
+                services.RemoveAll<DatabaseInitializer>();
+                services.RemoveAll<IAppointmentRepository>();
+                services.RemoveAll<IAvailabilityValidator>();
+                services.AddSingleton<IAppointmentRepository, InMemoryAppointmentRepository>();
+                services.AddScoped<IAvailabilityValidator, AllowAllAvailabilityValidator>();
             });
         });
     }

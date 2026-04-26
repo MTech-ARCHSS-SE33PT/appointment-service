@@ -98,6 +98,45 @@ public sealed class AppointmentManagementServiceTests
             service.CancelAppointmentAsync(Guid.NewGuid(), new CancelAppointmentRequest(), CancellationToken.None));
     }
 
+    [Fact]
+    public async Task RescheduleAppointmentAsync_UpdatesSlot_AndPublishesPreviousAndNewTimes()
+    {
+        var repository = new FakeAppointmentRepository();
+        var publisher = new FakeEventPublisher();
+        var service = new AppointmentManagementService(repository, publisher);
+        var originalStart = DateTimeOffset.UtcNow.AddHours(1);
+        var originalEnd = originalStart.AddMinutes(30);
+        var appointment = Appointment.CreateScheduled(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            originalStart,
+            originalEnd,
+            priorityLevel: 0);
+        await repository.AddAsync(appointment, CancellationToken.None);
+
+        var newStart = originalStart.AddDays(1);
+        var newEnd = newStart.AddMinutes(45);
+
+        var result = await service.RescheduleAppointmentAsync(
+            appointment.AppointmentId,
+            new RescheduleAppointmentRequest
+            {
+                NewSlotStart = newStart,
+                NewSlotEnd = newEnd
+            },
+            CancellationToken.None);
+
+        Assert.Equal(newStart, result.SlotStart);
+        Assert.Equal(newEnd, result.SlotEnd);
+
+        var rescheduledEvent = Assert.IsType<AppointmentRescheduledEvent>(Assert.Single(publisher.Events));
+        Assert.Equal(originalStart, rescheduledEvent.PreviousSlotStart);
+        Assert.Equal(originalEnd, rescheduledEvent.PreviousSlotEnd);
+        Assert.Equal(newStart, rescheduledEvent.NewSlotStart);
+        Assert.Equal(newEnd, rescheduledEvent.NewSlotEnd);
+    }
+
     private sealed class FakeEventPublisher : IEventPublisher
     {
         public List<object> Events { get; } = new();
